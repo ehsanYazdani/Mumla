@@ -63,9 +63,12 @@ in this MVP and its unused restricted entitlements are not added to this build.
   If the clipboard changes after staging but before dispatch, cancel rather
   than paste the user's newer clipboard contents into the destination.
 - On confirmed insertion, dismiss the pill without a transcript/copy dialog.
-  A blocked or unconfirmed paste retains the transcript in the existing pill.
-  The transcript is copied only when the user presses Copy. Never retry an
-  unconfirmed paste automatically because the first attempt may have landed.
+  By default a blocked or unconfirmed paste retains the transcript in the pill,
+  and copying requires pressing Copy. Switching off Mac Settings > Show Copy
+  dialog enables silent clipboard fallback instead: copy and hide the recorder
+  when possible, while preserving newer user copies. Otherwise retain the
+  transcript in History and show the failure in menu-bar status, not a dialog.
+  Never retry an unconfirmed paste because the first attempt may have landed.
 - Save every dictation in history before attempting insertion.
 - Copied keyboard diagnostics include `Paste: <outcome>` to distinguish target,
   permission, modifier, dispatch and verification failures without collecting
