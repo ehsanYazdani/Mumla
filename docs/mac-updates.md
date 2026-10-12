@@ -7,10 +7,10 @@ The sandboxed Mac App Store/TestFlight target and iOS do not embed Sparkle.
 Keep `com.mumla.app`, the signing team, existing data, permissions, and models.
 Do not change transcription, hotkeys, or paste behavior.
 
-The source repository stays private. The separate public
+The app source is public under MIT in `simonbromander/Mumla`. The separate public
 `simonbromander/Mumla-Releases` repository contains only a signed appcast,
-installation notes, and signed/notarized app downloads. No source, credentials,
-models, recordings, transcripts, or internal build logs are published.
+installation notes, and signed/notarized app downloads. Credentials, model
+weights, recordings, transcripts and internal build logs are not published.
 
 ## Implementation
 
