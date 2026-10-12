@@ -317,6 +317,10 @@ final class AppCoordinator: ObservableObject {
             watchForCorrectionLearning()
             return
         case let .needsCopy(copied):
+            if !settings.showPasteDialog {
+                finishClipboardFallback(record, alreadyCopied: copied)
+                return
+            }
             hidePillTask?.cancel()
             pillState = .transcript(record, copied: copied)
             statusText = "Transcript ready"
@@ -326,11 +330,43 @@ final class AppCoordinator: ObservableObject {
                 self.presentInsertion(.inserted, record: record)
             }
         case .blockedSecureField:
+            if !settings.showPasteDialog {
+                finishClipboardFallback(record)
+                return
+            }
             hidePillTask?.cancel()
             pillState = .transcript(record, copied: false)
             statusText = "Secure field blocked"
         }
         showPill?()
+    }
+
+    private func finishClipboardFallback(_ record: DictationRecord, alreadyCopied: Bool = false) {
+        pasteVerificationTask?.cancel()
+        hidePillTask?.cancel()
+        let outcome = alreadyCopied ? .copied : inserter.copyFallbackTranscript(record.text)
+        switch outcome {
+        case .copied: statusText = mText("Kopierat till urklipp", "Copied to clipboard")
+        case .clipboardChanged: statusText = mText("Urklipp har ändrats. Transkriptet finns i historiken.", "Clipboard changed. Transcript saved in history.")
+        case .unavailable: statusText = mText("Kunde inte kopiera. Transkriptet finns i historiken.", "Couldn't copy. Transcript saved in history.")
+        }
+        pillState = .hidden
+        hidePill?()
+    }
+
+    func setShowPasteDialog(_ enabled: Bool) {
+        guard settings.showPasteDialog != enabled else { return }
+        var updated = settings
+        updated.showPasteDialog = enabled
+        do {
+            try settingsStore.save(updated)
+            settings = updated
+            if !enabled, case let .transcript(record, copied) = pillState {
+                finishClipboardFallback(record, alreadyCopied: copied)
+            }
+        } catch {
+            statusText = "Settings save failed"
+        }
     }
 
     func openSettings() {

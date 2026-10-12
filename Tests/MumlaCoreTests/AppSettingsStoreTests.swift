@@ -23,7 +23,8 @@ final class AppSettingsStoreTests: XCTestCase {
             soundFeedbackEnabled: false,
             launchAtLogin: true,
             onboardingCompleted: true,
-            triggerKey: .rightOption
+            triggerKey: .rightOption,
+            showPasteDialog: false
         )
 
         try store.save(settings)
@@ -48,5 +49,6 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(settings.lastLanguage, .swedish)
         XCTAssertTrue(settings.onboardingCompleted)
         XCTAssertEqual(settings.triggerKey, .control)
+        XCTAssertTrue(settings.showPasteDialog)
     }
 }

@@ -10,6 +10,7 @@ final class ClipboardTextInserter {
     private let modifierReleaseDelays: [Duration]
     private let lateVerificationDelays: [Duration]
     private var pendingVerification: PendingVerification?
+    private var fallbackClipboardChangeCount: Int?
     private(set) var lastOutcome = TextInsertionOutcome.notAttempted
 
     init(system: any TextInsertionSystem = MacTextInsertionSystem(), pasteboard: NSPasteboard = .general,
@@ -26,6 +27,7 @@ final class ClipboardTextInserter {
     func insert(_ text: String, target: FocusedTextTargetSnapshot?) async -> ClipboardInsertionResult {
         lastOutcome = .notAttempted
         pendingVerification = nil
+        fallbackClipboardChangeCount = pasteboard.changeCount
         guard !text.isEmpty else { return manualCopy(.emptyText) }
         if let failure = preflight(target) { return failure }
         guard let target else { return manualCopy(.targetUnavailable) }
@@ -43,13 +45,21 @@ final class ClipboardTextInserter {
         if let failure = preflight(target) { return failure }
         guard system.areModifiersReleased else { return manualCopy(.modifiersHeld) }
         let snapshot = ClipboardSnapshot.capture(from: pasteboard)
+        let canUseClipboardFallback = pasteboard.changeCount == fallbackClipboardChangeCount
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else {
-            snapshot.restore(ifUnchanged: pasteboard.changeCount, to: pasteboard)
+            if snapshot.restore(ifUnchanged: pasteboard.changeCount, to: pasteboard), canUseClipboardFallback {
+                fallbackClipboardChangeCount = pasteboard.changeCount
+            }
             return manualCopy(.clipboardUnavailable)
         }
         let pasteChangeCount = pasteboard.changeCount
-        defer { snapshot.restore(ifUnchanged: pasteChangeCount, to: pasteboard) }
+        if canUseClipboardFallback { fallbackClipboardChangeCount = pasteChangeCount }
+        defer {
+            if snapshot.restore(ifUnchanged: pasteChangeCount, to: pasteboard), canUseClipboardFallback {
+                fallbackClipboardChangeCount = pasteboard.changeCount
+            }
+        }
         if let failure = preflight(target) { return failure }
         guard system.areModifiersReleased else { return manualCopy(.modifiersHeld) }
         guard pasteboard.changeCount == pasteChangeCount else { return manualCopy(.clipboardChanged) }
@@ -69,6 +79,24 @@ final class ClipboardTextInserter {
             pendingVerification = PendingVerification(text: text, before: before, selectedRange: selectedRange, target: target)
         }
         return result
+    }
+
+    func copyFallbackTranscript(_ text: String) -> ClipboardFallbackOutcome {
+        pendingVerification = nil
+        guard !text.isEmpty, lastOutcome != .cancelled, lastOutcome != .confirmed else { return .unavailable }
+        // Automatic fallback must not replace something the user copied during or after insertion.
+        let expectedCount = fallbackClipboardChangeCount ?? pasteboard.changeCount
+        guard pasteboard.changeCount == expectedCount else { return .clipboardChanged }
+        let snapshot = ClipboardSnapshot.capture(from: pasteboard)
+        guard pasteboard.changeCount == expectedCount else { return .clipboardChanged }
+        let copyChangeCount = pasteboard.clearContents()
+        guard pasteboard.changeCount == copyChangeCount else { return .clipboardChanged }
+        guard pasteboard.setString(text, forType: .string) else {
+            snapshot.restore(ifUnchanged: pasteboard.changeCount, to: pasteboard)
+            return .unavailable
+        }
+        fallbackClipboardChangeCount = pasteboard.changeCount
+        return .copied
     }
 
     func confirmPendingInsertion(_ text: String) async -> Bool {
@@ -194,6 +222,10 @@ enum ClipboardInsertionResult {
     case inserted
     case needsCopy(copied: Bool)
     case blockedSecureField
+}
+
+enum ClipboardFallbackOutcome: Equatable {
+    case copied, clipboardChanged, unavailable
 }
 
 struct ClipboardSnapshot {

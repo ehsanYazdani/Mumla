@@ -6,6 +6,124 @@ import XCTest
 
 final class TranscriptPillTests: XCTestCase {
     @MainActor
+    func testHistoryPasteWithoutATargetCopiesSilentlyAfterTranscribingBar() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        let record = DictationRecord(text: "Hej Mumla", language: .swedish)
+        coordinator.history = try DictationHistoryStore(directory: directory).append(record)
+        coordinator.setShowPasteDialog(false)
+        var presentations: [PillState] = []
+        coordinator.showPill = { [weak coordinator] in
+            if let state = coordinator?.pillState { presentations.append(state) }
+        }
+        coordinator.pasteRecord(record, target: nil)
+        for _ in 0..<100 {
+            if coordinator.pillState == .hidden { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(presentations, [.transcribing])
+        XCTAssertEqual(coordinator.pillState, .hidden)
+        XCTAssertEqual(board.string(forType: .string), record.text)
+        XCTAssertEqual(coordinator.history, [record])
+    }
+
+    @MainActor
+    func testFailedSettingsSaveDoesNotEnableSilentCopyOrDismissFallback() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory.appendingPathComponent("settings.json"), withIntermediateDirectories: true)
+        board.setString("Previous clipboard", forType: .string)
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        let record = DictationRecord(text: "My dictation", language: .english)
+        coordinator.presentInsertion(.needsCopy(copied: false), record: record)
+        coordinator.setShowPasteDialog(false)
+        XCTAssertTrue(coordinator.settings.showPasteDialog)
+        XCTAssertEqual(coordinator.pillState, .transcript(record, copied: false))
+        XCTAssertEqual(board.string(forType: .string), "Previous clipboard")
+    }
+
+    @MainActor
+    func testSilentFallbackCopiesAndHidesWithoutLosingHistory() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        let record = DictationRecord(text: "Hej Mumla", language: .swedish)
+        coordinator.history = try DictationHistoryStore(directory: directory).append(record)
+        coordinator.setShowPasteDialog(false)
+        XCTAssertFalse(try AppSettingsStore(directory: directory).load().showPasteDialog)
+        var presentations = 0
+        var dismissals = 0
+        coordinator.showPill = { presentations += 1 }
+        coordinator.hidePill = { dismissals += 1 }
+        coordinator.pillState = .transcribing
+        coordinator.presentInsertion(.needsCopy(copied: false), record: record)
+        XCTAssertEqual(board.string(forType: .string), record.text)
+        XCTAssertEqual(coordinator.pillState, .hidden)
+        XCTAssertEqual(presentations, 0)
+        XCTAssertEqual(dismissals, 1)
+        XCTAssertEqual(coordinator.history, [record])
+        XCTAssertEqual(try DictationHistoryStore(directory: directory).load(), [record])
+        coordinator.setShowPasteDialog(true)
+        XCTAssertTrue(try AppSettingsStore(directory: directory).load().showPasteDialog)
+        coordinator.presentInsertion(.needsCopy(copied: false), record: record)
+        XCTAssertEqual(coordinator.pillState, .transcript(record, copied: false))
+        XCTAssertEqual(presentations, 1)
+    }
+
+    @MainActor
+    func testTurningDialogOffCopiesAndDismissesExistingFallback() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        let record = DictationRecord(text: "My dictation", language: .english)
+        coordinator.presentInsertion(.blockedSecureField, record: record)
+        coordinator.setShowPasteDialog(false)
+        XCTAssertEqual(coordinator.pillState, .hidden)
+        XCTAssertEqual(board.string(forType: .string), record.text)
+    }
+
+    @MainActor
+    func testSilentModeNeverShowsFallbackForSecureOrEmptyTranscriptAndLeavesConfirmedClipboardAlone() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        coordinator.setShowPasteDialog(false)
+        var presentations = 0
+        coordinator.showPill = { presentations += 1 }
+        let record = DictationRecord(text: "My dictation", language: .english)
+        coordinator.presentInsertion(.blockedSecureField, record: record)
+        XCTAssertEqual(coordinator.pillState, .hidden)
+        XCTAssertEqual(board.string(forType: .string), record.text)
+        board.clearContents()
+        board.setString("Clipboard after success", forType: .string)
+        coordinator.presentInsertion(.inserted, record: record)
+        XCTAssertEqual(board.string(forType: .string), "Clipboard after success")
+        coordinator.presentInsertion(.needsCopy(copied: false), record: DictationRecord(text: "", language: .english))
+        XCTAssertEqual(coordinator.pillState, .hidden)
+        XCTAssertEqual(board.string(forType: .string), "Clipboard after success")
+        XCTAssertEqual(presentations, 0)
+    }
+
+    @MainActor
+    func testAlreadyCopiedSilentFallbackDoesNotReplaceNewerClipboard() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        coordinator.setShowPasteDialog(false)
+        board.setString("Newer user copy", forType: .string)
+        coordinator.presentInsertion(.needsCopy(copied: true), record: DictationRecord(text: "Old dictation", language: .english))
+        XCTAssertEqual(coordinator.pillState, .hidden)
+        XCTAssertEqual(board.string(forType: .string), "Newer user copy")
+    }
+
+    @MainActor
     func testSettingsActionRequestsSettingsInsteadOfOnlyOpeningWindow() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let board = NSPasteboard.withUniqueName()

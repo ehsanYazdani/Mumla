@@ -353,6 +353,16 @@ struct MainView: View {
                         Label(AccessibilityPermission.isTrusted ? mText("Tillåtet", "Allowed") : mText("Öppna inställningar", "Open Settings"), systemImage: "arrow.up.right").padding(12)
                     }
                 }
+                settingRow(mText("Visa kopieringsruta", "Show Copy dialog"), symbol: "doc.on.clipboard") {
+                    Toggle(mText("Visa kopieringsruta", "Show Copy dialog"), isOn: Binding(
+                        get: { coordinator.settings.showPasteDialog },
+                        set: { coordinator.setShowPasteDialog($0) }
+                    ))
+                    .toggleStyle(MumlaSwitchStyle(showsLabel: false))
+                    .help(mText("Avstängt: kopiera till urklipp om inklistring misslyckas.", "When off, copy to the clipboard if pasting fails."))
+                    .accessibilityHint(mText("Avstängt: kopiera till urklipp om inklistring misslyckas.", "When off, copy to the clipboard if pasting fails."))
+                    .accessibilityIdentifier("settings.show-paste-dialog")
+                }
                 settingRow(mText("Starta vid inloggning", "Launch at login"), symbol: "power") {
                     Toggle(mText("Starta vid inloggning", "Launch at login"), isOn: Binding(get: { coordinator.isLaunchAtLoginRequested }, set: { coordinator.setLaunchAtLoginEnabled($0) }))
                         .toggleStyle(MumlaSwitchStyle(showsLabel: false))

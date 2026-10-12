@@ -5,6 +5,81 @@ import XCTest
 
 @MainActor
 final class AutoPasteTests: XCTestCase {
+    func testSilentFallbackCopiesWholeTranscriptAfterClipboardRestorationWithoutRetry() async {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("Previous clipboard", forType: .string)
+        let system = PasteSystem(board: board)
+        system.applyOnRead = nil
+        let service = inserter(system, board)
+        let text = String(repeating: "En hel anteckning. ", count: 100)
+        assertManualCopy(await service.insert(text, target: target))
+        XCTAssertEqual(board.string(forType: .string), "Previous clipboard")
+        XCTAssertEqual(service.copyFallbackTranscript(text), .copied)
+        XCTAssertEqual(board.string(forType: .string), text)
+        XCTAssertEqual(system.postCount, 1)
+        let confirms = await service.confirmPendingInsertion(text)
+        XCTAssertFalse(confirms)
+        XCTAssertEqual(board.string(forType: .string), text)
+    }
+
+    func testSilentFallbackPreservesNewerClipboardBeforeDuringAndAfterPaste() async {
+        for when in ["before", "during", "after"] {
+            let board = NSPasteboard.withUniqueName()
+            defer { board.releaseGlobally() }
+            board.setString("Previous clipboard", forType: .string)
+            let system = PasteSystem(board: board)
+            system.postSucceeds = false
+            let copy = {
+                board.clearContents()
+                board.setString("Newer user copy", forType: .string)
+            }
+            if when == "before" { system.onRead = { _ = copy() } }
+            if when == "during" { system.onPost = { _ = copy() } }
+            let service = inserter(system, board)
+            assertManualCopy(await service.insert("Hej Mumla", target: target))
+            if when == "after" { _ = copy() }
+            let count = board.changeCount
+            XCTAssertEqual(service.copyFallbackTranscript("Hej Mumla"), .clipboardChanged, when)
+            XCTAssertEqual(board.string(forType: .string), "Newer user copy", when)
+            XCTAssertEqual(board.changeCount, count, when)
+            XCTAssertEqual(system.postCount, 1)
+        }
+    }
+
+    func testSilentFallbackHandlesSecureFieldAndPermissionFailureWithoutReadingField() async {
+        for secure in [true, false] {
+            let board = NSPasteboard.withUniqueName()
+            defer { board.releaseGlobally() }
+            let system = PasteSystem(board: board)
+            system.isSecureInput = secure
+            system.canPostEvents = false
+            let service = inserter(system, board)
+            _ = await service.insert("My dictation", target: target)
+            XCTAssertEqual(service.copyFallbackTranscript("My dictation"), .copied)
+            XCTAssertEqual(board.string(forType: .string), "My dictation")
+            XCTAssertEqual(system.postCount, 0)
+            XCTAssertEqual(system.readCount, 0)
+        }
+    }
+
+    func testSilentFallbackCannotCopyEmptyCancelledOrConfirmedInsertions() async {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("Previous clipboard", forType: .string)
+        let service = inserter(PasteSystem(board: board), board)
+        _ = await service.insert("", target: target)
+        XCTAssertEqual(service.copyFallbackTranscript(""), .unavailable)
+        let insertionTarget = target
+        let task = Task { await service.insert("Cancelled", target: insertionTarget) }
+        task.cancel()
+        _ = await task.value
+        XCTAssertEqual(service.copyFallbackTranscript("Cancelled"), .unavailable)
+        _ = await service.insert("Confirmed", target: target)
+        XCTAssertEqual(service.copyFallbackTranscript("Confirmed"), .unavailable)
+        XCTAssertEqual(board.string(forType: .string), "Previous clipboard")
+    }
+
     func testEditorsDoNotNeedAccessibilitySettersToAcceptPaste() {
         XCTAssertTrue(FocusedTextTargetInspector.acceptsPaste(role: "AXTextArea", enabled: true, editable: nil))
         XCTAssertTrue(FocusedTextTargetInspector.acceptsPaste(role: "AXTextField", enabled: nil, editable: nil))

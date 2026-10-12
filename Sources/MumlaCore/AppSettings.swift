@@ -7,6 +7,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     public var onboardingCompleted: Bool
     public var triggerKey: DictationTriggerKey
+    public var showPasteDialog: Bool
 
     public init(
         languageMode: LanguageMode = .automatic,
@@ -14,7 +15,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         soundFeedbackEnabled: Bool = true,
         launchAtLogin: Bool = false,
         onboardingCompleted: Bool = false,
-        triggerKey: DictationTriggerKey = .control
+        triggerKey: DictationTriggerKey = .control,
+        showPasteDialog: Bool = true
     ) {
         self.languageMode = languageMode
         self.lastLanguage = lastLanguage
@@ -22,6 +24,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.launchAtLogin = launchAtLogin
         self.onboardingCompleted = onboardingCompleted
         self.triggerKey = triggerKey
+        self.showPasteDialog = showPasteDialog
     }
 
     public static let `default` = AppSettings()
@@ -33,6 +36,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case launchAtLogin
         case onboardingCompleted
         case triggerKey
+        case showPasteDialog
     }
 
     public init(from decoder: Decoder) throws {
@@ -43,6 +47,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
         onboardingCompleted = try container.decodeIfPresent(Bool.self, forKey: .onboardingCompleted) ?? false
         triggerKey = try container.decodeIfPresent(DictationTriggerKey.self, forKey: .triggerKey) ?? .control
+        showPasteDialog = try container.decodeIfPresent(Bool.self, forKey: .showPasteDialog) ?? true
     }
 }
 
