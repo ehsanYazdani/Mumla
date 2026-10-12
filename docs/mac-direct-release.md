@@ -1,5 +1,38 @@
 # Full-Capability Mac Distribution
 
+## Silent Clipboard Fallback Beta: 2026-10-12
+
+- Universal direct `1.0.1 (38)` is published as a GitHub prerelease in Mumla
+  and Mumla-Releases, from `f214d6318c39ec31f271d262c44bce2bea152e2a`.
+- Adds Mac Settings > Show Copy dialog. Switching it off copies failed,
+  blocked or unverified pastes to the clipboard and hides the recorder, with
+  no transcript/copy dialog. Newer user copies are protected; if copying is
+  unavailable, History and menu-bar status remain the recovery path.
+- Existing users keep the dialog-enabled default. Switching it off also handles
+  an already-open fallback. Confirmed pastes still restore the clipboard. No
+  automatic paste retry, microphone, hotkey or model change was added.
+- 200 shared/Mac tests completed with zero failures and one opt-in live-model
+  skip; all 31 release-helper tests passed. Unit tests are not real target-app
+  acceptance. Existing formatting and summary quality remains experimental.
+- arm64/x86_64, Developer ID signature, hardened runtime and microphone-only
+  entitlements verified. Apple notarization
+  `260603b3-50a0-460f-b54c-aad0c2b0c65e` was Accepted. The ticket was stapled;
+  a fresh final-ZIP extraction passed code signature, ticket and Gatekeeper
+  checks. ZIP integrity also passed. No sandbox or debugger entitlement.
+- ZIP size: 23,213,886 bytes. SHA-256:
+  `39a35adbd1e6bd7f2ff75a29665eadc5e30900ab3508500b9c1d6fba72b157f7`.
+- Feed commit `9443180`; public downloads and Ed25519 signatures passed before
+  publication. The live feed is byte-identical to staging, and all enclosures
+  (38, 37, 36) passed public verification. In-app installation/relaunch and
+  physical dictation/paste remain separate acceptance checks.
+- Evidence is local in `.build/direct38-build.log`,
+  `.build/direct38-notarize.log`, `.build/direct38-swift-tests.log`,
+  `.build/direct38-release-helper-tests.log`, `.build/direct38-feed-prepare.json`,
+  `.build/direct38-public-verify.json` and `.build/direct38-live-public-verify.json`.
+  Only the notarized ZIP and checksum were uploaded as release assets.
+- [Download and installation notes](https://github.com/simonbromander/Mumla-Releases/releases/tag/macos-1.0.1-38).
+  No iOS or sandboxed Mac TestFlight upload was performed by this release.
+
 ## Local Text Beta: 2026-10-08
 
 - Universal direct `1.0.1 (37)` is published as a GitHub prerelease in Mumla
