@@ -1,5 +1,44 @@
 # Full-Capability Mac Distribution
 
+## Chromium Paste Confirmation Beta: 2026-10-12
+
+- Universal direct `1.0.1 (39)` is published as a GitHub prerelease in Mumla
+  and Mumla-Releases, from `7fdec0f24d522c9832eafdf03387dfd377a598af`.
+  This source includes @ehsanYazdani's merged
+  [PR #2](https://github.com/simonbromander/Mumla/pull/2), which was not in build 38.
+- Confirms complete text insertion into empty Chromium/Electron editors whose
+  Accessibility baseline is newline-only, including normalized line endings.
+  Confirmed pastes dismiss the bottom bar and restore the prior clipboard.
+  Partial, unchanged and unrelated text are still rejected. Existing focus,
+  secure-input, permission and newer-clipboard guards remain in place.
+- Includes build 38's optional silent clipboard fallback. No recording,
+  transcription, hotkey or model behavior changed. Local formatting and
+  summary quality remains experimental.
+- 201 shared/Mac tests completed with zero failures and one opt-in live-model
+  skip; all 31 release-helper tests passed. Contributor CI's full-history
+  secret scan, package/helper tests and unsigned native builds passed for the
+  release source. These checks are not physical target-app acceptance.
+- arm64/x86_64, Developer ID signature, hardened runtime and microphone-only
+  entitlements verified. Apple notarization
+  `18dbb5eb-b367-4019-b243-edd8d41e803f` was Accepted. The ticket was stapled;
+  a fresh anonymous public-ZIP extraction passed code signature, ticket and
+  Gatekeeper checks. ZIP integrity also passed. No sandbox or debugger entitlement.
+- ZIP size: 23,214,128 bytes. SHA-256:
+  `731dcae4cb0aed8d24b29a82c96cb06b14a8c5953d5c246dc6296a2ea1464fbb`.
+  The anonymous download and public checksum matched the local staged archive.
+- Feed commit `d7441a6`; public downloads and Ed25519 signatures passed before
+  feed publication. The live feed is byte-identical to staging, and all
+  enclosures (39, 38, 37) passed public verification. Live update installation,
+  relaunch and physical dictation/paste remain separate acceptance checks.
+- Evidence is local in `.build/direct39-build.log`,
+  `.build/direct39-notarize.log`, `.build/direct39-swift-tests.log`,
+  `.build/direct39-release-helper-tests.log`, `.build/direct39-feed-prepare.json`,
+  `.build/direct39-public-verify.json`, `.build/direct39-live-public-verify.json`
+  and `.build/DirectMac/build-audit-39.json`. Only the notarized ZIP and checksum
+  were uploaded as release assets.
+- [Download and installation notes](https://github.com/simonbromander/Mumla-Releases/releases/tag/macos-1.0.1-39).
+  No iOS or sandboxed Mac TestFlight upload was performed by this release.
+
 ## Silent Clipboard Fallback Beta: 2026-10-12
 
 - Universal direct `1.0.1 (38)` is published as a GitHub prerelease in Mumla
