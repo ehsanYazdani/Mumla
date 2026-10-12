@@ -80,4 +80,13 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(ClipboardTextInserter.verifiesInsertion("Mumla", before: "One\r\nTwo ", after: "One\nTwo Mumla", selectedRange: NSRange(location: 9, length: 0)))
         XCTAssertFalse(ClipboardTextInserter.verifiesInsertion("Mumla", before: "Hello ", after: "Hello  Mumla", selectedRange: NSRange(location: 6, length: 0)))
     }
+
+    @MainActor
+    func testEmptyChromiumEditorReportedAsNewlineAcceptsPaste() {
+        XCTAssertTrue(ClipboardTextInserter.verifiesInsertion("Mumla", before: "\n", after: "Mumla", selectedRange: NSRange(location: 0, length: 0)))
+        XCTAssertTrue(ClipboardTextInserter.verifiesInsertion("Mumla", before: "\n", after: "Mumla\n", selectedRange: nil))
+        XCTAssertFalse(ClipboardTextInserter.verifiesInsertion("Mumla", before: "\n", after: "\n", selectedRange: NSRange(location: 0, length: 0)))
+        XCTAssertFalse(ClipboardTextInserter.verifiesInsertion("Mumla", before: "\n", after: "Other", selectedRange: NSRange(location: 0, length: 0)))
+        XCTAssertFalse(ClipboardTextInserter.verifiesInsertion("\n", before: "\n", after: "\n", selectedRange: nil))
+    }
 }

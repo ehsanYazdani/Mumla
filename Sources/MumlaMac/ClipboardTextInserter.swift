@@ -144,6 +144,13 @@ final class ClipboardTextInserter {
 
     static func verifiesInsertion(_ text: String, before: String?, after: String?, selectedRange: NSRange?) -> Bool {
         guard !text.isEmpty, let before, let after else { return false }
+        // Chromium rich-text editors report an empty field as "\n" and drop it once text is inserted.
+        let blank = normalizedLineEndings(before)
+        if !blank.isEmpty, blank.allSatisfy({ $0 == "\n" }) {
+            let newlines = CharacterSet(charactersIn: "\n")
+            let inserted = normalizedLineEndings(text).trimmingCharacters(in: newlines)
+            if !inserted.isEmpty, normalizedLineEndings(after).trimmingCharacters(in: newlines) == inserted { return true }
+        }
         let original = before as NSString
         if let range = selectedRange {
             guard range.location >= 0, range.length >= 0,
