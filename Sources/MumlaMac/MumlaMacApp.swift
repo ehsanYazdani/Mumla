@@ -95,6 +95,9 @@ final class MumlaMacApp: NSObject, NSApplicationDelegate {
                 await coordinator?.toggleHandsFreeDictation()
             }
         }
+        hotkeyMonitor.onSecureInputBlocked = { [weak coordinator] in
+            coordinator?.showSecureInputWarning()
+        }
         hotkeyMonitor.onCancel = { [weak coordinator] in
             Task { @MainActor in
                 coordinator?.cancelDictation()

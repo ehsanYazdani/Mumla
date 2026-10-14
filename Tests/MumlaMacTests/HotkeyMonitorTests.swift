@@ -447,6 +447,38 @@ final class HotkeyMonitorTests: XCTestCase {
         XCTAssertEqual(monitor.gestureStage, .secureInputBlocked)
     }
 
+    func testTriggerPressDuringSecureInputWarnsWithoutStartingDictation() {
+        let source = FakeHotkeyEventSource()
+        source.isSecureInput = true
+        let monitor = ControlHotkeyMonitor(source: source)
+        defer { monitor.stop() }
+        var warnings = 0
+        var starts = 0
+        monitor.onSecureInputBlocked = { warnings += 1 }
+        monitor.onHoldStarted = { starts += 1 }
+        monitor.start()
+        source.send(.flagsChanged, keyCode: 59, flags: .maskControl)
+        source.send(.flagsChanged, keyCode: 59)
+        XCTAssertEqual(warnings, 1)
+        XCTAssertEqual(starts, 0)
+        XCTAssertEqual(monitor.gestureStage, .secureInputBlocked)
+    }
+
+    func testOtherModifiersDuringSecureInputDoNotWarn() {
+        let source = FakeHotkeyEventSource()
+        source.isSecureInput = true
+        let monitor = ControlHotkeyMonitor(source: source)
+        defer { monitor.stop() }
+        var warnings = 0
+        monitor.onSecureInputBlocked = { warnings += 1 }
+        monitor.start()
+        // Shift while typing a password, and the trigger held with another key still down.
+        source.send(.flagsChanged, keyCode: 56, flags: .maskShift)
+        source.send(.flagsChanged, keyCode: 56, flags: [.maskShift, .maskControl])
+        source.send(.keyDown, keyCode: 0)
+        XCTAssertEqual(warnings, 0)
+    }
+
     func testHoldTimerAlsoFiresInMenuTrackingMode() {
         CFRunLoopAddCommonMode(CFRunLoopGetMain(), CFRunLoopMode(rawValue: RunLoop.Mode.eventTracking.rawValue as CFString))
         assertNativeHoldTimer(mode: .eventTracking)
