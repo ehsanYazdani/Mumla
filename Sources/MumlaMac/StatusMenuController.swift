@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import MumlaAudio
 import MumlaCore
 import MumlaUI
 
@@ -33,6 +34,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             .sink { [weak self] _ in self?.rebuildMenu() }
             .store(in: &cancellables)
         coordinator.$languageMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.rebuildMenu() }
+            .store(in: &cancellables)
+        coordinator.$inputDevices
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.rebuildMenu() }
+            .store(in: &cancellables)
+        coordinator.$settings
+            .map(\.pinnedInputDevice)
+            .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.rebuildMenu() }
             .store(in: &cancellables)
@@ -93,6 +104,29 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         let languageItem = NSMenuItem(title: "Language", action: nil, keyEquivalent: "")
         languageItem.submenu = languageMenu
         menu.addItem(languageItem)
+
+        let microphoneMenu = NSMenu()
+        microphoneMenu.autoenablesItems = false
+        let pinned = coordinator.settings.pinnedInputDevice
+        let systemDefault = menuItem(mText("Systemets standard", "System Default"), action: #selector(selectMicrophone(_:)))
+        systemDefault.state = pinned == nil ? .on : .off
+        microphoneMenu.addItem(systemDefault)
+        microphoneMenu.addItem(.separator())
+        for device in coordinator.inputDevices {
+            let item = menuItem(device.name, action: #selector(selectMicrophone(_:)))
+            item.representedObject = device.uid
+            item.state = coordinator.isPinnedInputDevice(device) ? .on : .off
+            microphoneMenu.addItem(item)
+        }
+        if let pinned, !coordinator.isPinnedInputDeviceConnected {
+            let item = NSMenuItem(title: pinned.name + " " + mText("(ej ansluten)", "(not connected)"), action: nil, keyEquivalent: "")
+            item.state = .on
+            item.isEnabled = false
+            microphoneMenu.addItem(item)
+        }
+        let microphoneItem = NSMenuItem(title: mText("Mikrofon", "Microphone"), action: nil, keyEquivalent: "")
+        microphoneItem.submenu = microphoneMenu
+        menu.addItem(microphoneItem)
 
         let appearanceMenu = NSMenu()
         for appearance in MumlaAppearance.allCases {
@@ -175,6 +209,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             let mode = LanguageMode(rawValue: rawValue)
         else { return }
         coordinator.setLanguageMode(mode)
+    }
+
+    @objc private func selectMicrophone(_ sender: NSMenuItem) {
+        guard let uid = sender.representedObject as? String else {
+            coordinator.setPinnedInputDevice(nil)
+            return
+        }
+        // Ignore a device that disconnected while the menu was open rather than resetting the choice.
+        guard let device = coordinator.inputDevices.first(where: { $0.uid == uid }) else { return }
+        coordinator.setPinnedInputDevice(device)
     }
 
     @objc private func pasteHistory(_ sender: NSMenuItem) {

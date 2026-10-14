@@ -25,6 +25,7 @@ final class AppCoordinator: ObservableObject {
     @Published var hotkeyGestureStage: HotkeyGestureStage = .waiting
     @Published private(set) var settingsOpenRequest: UUID?
     @Published private(set) var isBusyForAppUpdate = false
+    @Published private(set) var inputDevices: [AudioInputDevice] = []
     private(set) var isInstallingAppUpdate = false
 
     var showPill: (() -> Void)?
@@ -54,6 +55,7 @@ final class AppCoordinator: ObservableObject {
     private var pendingStartID: UUID? { didSet { refreshUpdateActivity() } }
     private var inFlightOperations = 0 { didSet { refreshUpdateActivity() } }
     private var insertionTarget: FocusedTextTargetSnapshot?
+    private var inputDeviceObserver: AnyObject?
 
     init(
         recorder: MicrophoneRecorder,
@@ -84,6 +86,10 @@ final class AppCoordinator: ObservableObject {
         refreshLaunchAtLoginStatus()
         history = (try? historyStore.load()) ?? []
         dictionaryEntries = (try? dictionaryStore.load()) ?? []
+        refreshInputDevices()
+        inputDeviceObserver = AudioInputDevices.observeChanges { [weak self] in
+            Task { @MainActor in self?.refreshInputDevices() }
+        }
         statusText = modelDirectory == nil ? "Model missing" : "Ready"
 
         if !settings.onboardingCompleted {
@@ -369,6 +375,48 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
+    /// Pins dictation to `device`, or follows the system default input when `nil`.
+    func setPinnedInputDevice(_ device: AudioInputDevice?) {
+        let pinned = device.map { PinnedInputDevice(uid: $0.uid, name: $0.name) }
+        guard settings.pinnedInputDevice != pinned else { return }
+        var updated = settings
+        updated.pinnedInputDevice = pinned
+        do {
+            try settingsStore.save(updated)
+            settings = updated
+        } catch {
+            statusText = "Settings save failed"
+        }
+    }
+
+    func isPinnedInputDevice(_ device: AudioInputDevice) -> Bool {
+        guard let pinned = settings.pinnedInputDevice else { return false }
+        return AudioInputDevices.match(pinned, in: inputDevices) == device
+    }
+
+    var isPinnedInputDeviceConnected: Bool {
+        guard let pinned = settings.pinnedInputDevice else { return false }
+        return AudioInputDevices.match(pinned, in: inputDevices) != nil
+    }
+
+    private func refreshInputDevices() {
+        let devices = AudioInputDevices.available()
+        if devices != inputDevices { inputDevices = devices }
+    }
+
+    /// UID of the remembered microphone if it's connected now, following it to a new UID if needed.
+    private func connectedPinnedInputDeviceUID() -> String? {
+        guard let pinned = settings.pinnedInputDevice else { return nil }
+        refreshInputDevices()
+        guard let device = AudioInputDevices.match(pinned, in: inputDevices) else { return nil }
+        if device.uid != pinned.uid || device.name != pinned.name {
+            var updated = settings
+            updated.pinnedInputDevice = PinnedInputDevice(uid: device.uid, name: device.name)
+            if (try? settingsStore.save(updated)) != nil { settings = updated }
+        }
+        return device.uid
+    }
+
     func openSettings() {
         settingsOpenRequest = UUID()
         isOnboardingVisible = false
@@ -649,7 +697,7 @@ final class AppCoordinator: ObservableObject {
         }
 
         do {
-            _ = try recorder.start()
+            _ = try recorder.start(inputDeviceUID: connectedPinnedInputDeviceUID())
             activeMode = mode
             recordingStartedAt = Date()
             waveformSamples = Array(repeating: 0, count: 43)

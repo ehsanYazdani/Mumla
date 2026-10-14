@@ -24,7 +24,8 @@ final class AppSettingsStoreTests: XCTestCase {
             launchAtLogin: true,
             onboardingCompleted: true,
             triggerKey: .rightOption,
-            showPasteDialog: false
+            showPasteDialog: false,
+            pinnedInputDevice: PinnedInputDevice(uid: "BuiltInMicrophoneDevice", name: "MacBook Pro Microphone")
         )
 
         try store.save(settings)
@@ -50,5 +51,6 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertTrue(settings.onboardingCompleted)
         XCTAssertEqual(settings.triggerKey, .control)
         XCTAssertTrue(settings.showPasteDialog)
+        XCTAssertNil(settings.pinnedInputDevice)
     }
 }
