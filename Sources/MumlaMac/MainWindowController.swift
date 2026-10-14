@@ -13,6 +13,8 @@ final class MainWindowController {
             backing: .buffered,
             defer: false
         )
+        // The controller owns the window and reopens it, so closing must not free it.
+        window.isReleasedWhenClosed = false
         window.title = "Mumla"
         window.contentView = NSHostingView(rootView: contentView)
         window.titleVisibility = .hidden
