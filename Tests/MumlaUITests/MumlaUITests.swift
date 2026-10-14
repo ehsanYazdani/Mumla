@@ -314,7 +314,8 @@ final class MumlaUITests: XCTestCase {
         settings.launchArguments = ["-AppleLanguages", "(en)"]
         settings.launch()
         for _ in 0..<5 where settings.buttons["BackButton"].exists { settings.buttons["BackButton"].tap() }
-        let general = settings.staticTexts["General"]
+        let generalButton = settings.buttons["com.apple.settings.general"]
+        let general = generalButton.exists ? generalButton : settings.staticTexts["General"].firstMatch
         for _ in 0..<4 where !general.isHittable { settings.swipeUp() }
         XCTAssertTrue(general.waitForExistence(timeout: 3)); general.tap()
         let keyboard = settings.staticTexts["Keyboard"].firstMatch
