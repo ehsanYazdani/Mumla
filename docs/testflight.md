@@ -6,6 +6,58 @@ Mumla iOS and macOS use the preserved App Store bundle identity:
 - Team ID: `PF2PWR4YG4`
 - Version: `1.0.1`
 
+## Verified iOS Release 33: 2026-10-14
+
+- iOS `1.0.1 (33)`, app source
+  `da6f00f3d3fd467c425d69720733fb1bfeaa849f`. This is a maintenance refresh
+  from current `main`, not a new keyboard design. Keeps build 32's typing
+  keyboard, local formatting and separate summaries. Shared settings decode
+  the newer Mac-only preferences compatibly. Recent Mac microphone, window
+  and Secure Input changes do not add iOS features.
+- 209 shared/Mac tests completed with zero failures and one opt-in live-model
+  test skipped; 31 release-helper tests passed with 74 assertions. Release
+  Simulator preflight, signed archive/export and source CI passed, including
+  the full-history secret scan.
+- The compact-iPhone run passed all 20 hosted and 29 UI tests. On iPad, all
+  20 hosted tests and three portrait UI cases passed in the initial run.
+  Two keyboard-extension cases initially failed on an ambiguous Settings
+  selector; test-only commit `4c593b0add5faabb5e1f2bc32e317678f1f0d17a`
+  scopes General navigation correctly. Both cases then passed on iPad and
+  iPhone. This test-only change does not change the archived app source.
+- Two iPad landscape assertions remain failed/unverified: the Simulator
+  stayed in portrait after rotation was requested. Desktop inspection was
+  unavailable while the host was locked. This is not a clean full iPad suite
+  or verified landscape acceptance. Selected phone/iPad light, dark, keyboard,
+  formatting and summary screenshots were inspected.
+- Archive and extracted IPA signatures, embedded profiles and signed
+  entitlements verified for app, keyboard and widget: matching version/build,
+  expected team, certificate and App Group, with `get-task-allow=false`.
+  Exported app has Production iCloud entitlements. Both extensions contain
+  no ASR/text-model runtime, microphone capture or background-audio declaration.
+  All three dSYM UUIDs match the exported binaries. Existing distribution
+  profiles were reused.
+- App Store Connect accepted the upload at `2026-10-14T11:58:22Z`;
+  processing completed at `2026-10-14T12:01:28Z`. Build
+  `ffa3a2e9-bf2a-4bbd-a14e-94ccf60ac7db` was verified `VALID` and
+  `IN_BETA_TESTING` at `2026-10-14T12:01:43Z`. Existing Test and Friends
+  groups both include the build, without audience changes.
+- Swedish/English testing notes from `fastlane/testflight/ios-1.0.1-33.json`
+  were published and read back at `2026-10-14T12:01:45Z`.
+- IPA SHA-256:
+  `999853a1b187b4c56430bf66611cf171f475df7f36486e05a8f0863e12a80aa2`.
+  Preserved IPA, dSYM and signing audits:
+  `.build/ReleaseAuditIOS33-20261014/`. Evidence: `.build/ios33-*.log`,
+  `.build/ios33-phone.xcresult`, `.build/ios33-ipad.xcresult`,
+  `.build/ios33-ipad-keyboard-final.xcresult` and
+  `.build/ios33-phone-keyboard-final.xcresult`.
+- No physical iPhone was connected. Background microphone continuity,
+  first-word capture, haptics, iOS beta compatibility and actual Swedish model
+  quality remain unverified. Start the keyboard session in Mumla and wait for
+  SESSION READY before returning to the host app. This remains an experimental
+  Swedish-only internal beta; English ASR, meetings and iCloud sync are not
+  implemented. No Mac release, audience changes, external beta review or
+  public App Store submission is included.
+
 ## Verified iOS Release 32: 2026-10-08
 
 - iOS `1.0.1 (32)`, app source `8cdfff858e50fa12b1e3f451a57e931c957febfa`.
