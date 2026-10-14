@@ -1,5 +1,45 @@
 # Full-Capability Mac Distribution
 
+## Microphone And Reliability Beta: 2026-10-14
+
+- Universal direct `1.0.1 (40)` is published as a GitHub prerelease in Mumla
+  and Mumla-Releases, from `41dd32da5c2d38ce72ce996da98270f4965247ed`.
+- Includes @ehsanYazdani's merged PRs #3, #4 and #5: keep the main window
+  alive after closing it to prevent reopen crashes; remember a dictation
+  microphone without changing the system default; explain trigger presses
+  blocked by Secure Input while leaving recording and protected fields blocked.
+- A disconnected or unavailable pinned microphone falls back to the system
+  default. A remembered device can be matched on reconnection by UID or a
+  unique display name. Physical routing, disconnect/reconnect and actual
+  Secure Input event delivery still require target-hardware acceptance.
+- Retains build 39's Chromium paste confirmation and build 38's optional
+  silent clipboard fallback. Model inference is unchanged. Local formatting
+  and summary quality remains experimental.
+- 209 shared/Mac tests completed with zero failures and one opt-in live-model
+  skip; all 31 release-helper tests passed. Contributor CI's full-history
+  secret scan, package/helper tests and unsigned native builds passed for
+  the release source. These checks are not physical dictation acceptance.
+- arm64/x86_64, Developer ID signature, hardened runtime and microphone-only
+  entitlements verified. Apple notarization
+  `49f22cc0-d6f0-4e70-a73d-6d63b335ebd3` was Accepted. The ticket was stapled;
+  a fresh anonymous public-ZIP extraction passed code signature, ticket and
+  Gatekeeper checks. ZIP integrity passed. No sandbox or debugger entitlement.
+- ZIP size: 23,262,081 bytes. SHA-256:
+  `29c49ec62be36539f7a67180c362d0c9f7a49a76021a477637d178c6bb37fde2`.
+  The anonymous download and public checksum matched the staged archive.
+- Feed commit `1343416`; public downloads and Ed25519 signatures passed before
+  publication. The live feed is byte-identical to staging, and all enclosures
+  (40, 39, 38) passed public verification. Live update installation/relaunch
+  and populated-data preservation remain separate acceptance checks.
+- Local evidence: `.build/direct40-build.log`, `.build/direct40-notarize.log`,
+  `.build/direct40-swift-tests.log`, `.build/direct40-release-helper-tests.log`,
+  `.build/direct40-feed-prepare.json`, `.build/direct40-public-verify.json`,
+  `.build/direct40-live-public-verify.json` and
+  `.build/DirectMac/build-audit-40.json`. Only the notarized ZIP and checksum
+  were uploaded as release assets.
+- [Download and installation notes](https://github.com/simonbromander/Mumla-Releases/releases/tag/macos-1.0.1-40).
+  No iOS or sandboxed Mac TestFlight upload was performed by this release.
+
 ## Chromium Paste Confirmation Beta: 2026-10-12
 
 - Universal direct `1.0.1 (39)` is published as a GitHub prerelease in Mumla
