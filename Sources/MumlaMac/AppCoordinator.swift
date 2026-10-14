@@ -689,10 +689,28 @@ final class AppCoordinator: ObservableObject {
         scheduleHidePill()
     }
 
-    private func scheduleHidePill() {
+    /// Explains why the trigger key did nothing; dictation already in progress keeps its pill.
+    /// macOS doesn't reliably report which app holds Secure Input, so the message names none.
+    func showSecureInputWarning() {
+        guard activeMode == nil, pendingStartID == nil else { return }
+        switch pillState {
+        case .hidden, .message: break
+        default: return
+        }
+        pillState = .message(Self.secureInputWarning)
+        showPill?()
+        scheduleHidePill(after: .seconds(4))
+    }
+
+    static let secureInputWarning = mText(
+        "Säker inmatning är på. Stäng lösenordshanterare och lösenordsfält.",
+        "Secure Input is on. Close password managers and password fields."
+    )
+
+    private func scheduleHidePill(after delay: Duration = .milliseconds(1400)) {
         hidePillTask?.cancel()
         hidePillTask = Task { [weak self] in
-            do { try await Task.sleep(for: .milliseconds(1400)) } catch { return }
+            do { try await Task.sleep(for: delay) } catch { return }
             guard let self, self.activeMode == nil, self.pendingStartID == nil,
                   case .message = self.pillState else { return }
             self.pillState = .hidden

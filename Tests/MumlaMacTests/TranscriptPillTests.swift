@@ -252,6 +252,35 @@ final class TranscriptPillTests: XCTestCase {
     }
 
     @MainActor
+    func testSecureInputWarningExplainsWhyTheHotkeyIsBlocked() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        var presentations = 0
+        coordinator.showPill = { presentations += 1 }
+        coordinator.showSecureInputWarning()
+        XCTAssertEqual(coordinator.pillState, .message(AppCoordinator.secureInputWarning))
+        XCTAssertEqual(presentations, 1)
+    }
+
+    @MainActor
+    func testSecureInputWarningDoesNotReplaceTranscriptOrProgress() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: directory) }
+        let coordinator = makeCoordinator(directory: directory, pasteboard: board)
+        var presentations = 0
+        coordinator.showPill = { presentations += 1 }
+        for state in [PillState.transcribing, .transcript(DictationRecord(text: "Hej", language: .swedish), copied: false)] {
+            coordinator.pillState = state
+            coordinator.showSecureInputWarning()
+            XCTAssertEqual(coordinator.pillState, state)
+        }
+        XCTAssertEqual(presentations, 0)
+    }
+
+    @MainActor
     private func makeCoordinator(directory: URL, pasteboard: NSPasteboard) -> AppCoordinator {
         AppCoordinator(recorder: MicrophoneRecorder(), transcriber: nil,
                        historyStore: DictationHistoryStore(directory: directory),

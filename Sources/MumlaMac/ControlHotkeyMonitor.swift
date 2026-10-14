@@ -21,6 +21,8 @@ final class ControlHotkeyMonitor {
     var onTap: (() -> Void)?
     var onDoubleTap: (() -> Void)?
     var onCancel: (() -> Void)?
+    /// The trigger key was pressed while Secure Input blocks the hotkey.
+    var onSecureInputBlocked: (() -> Void)?
     var onStatusChanged: ((HotkeyMonitorStatus) -> Void)?
     var onGestureStageChanged: ((HotkeyGestureStage) -> Void)?
     private(set) var gestureStage: HotkeyGestureStage = .waiting
@@ -96,9 +98,13 @@ final class ControlHotkeyMonitor {
             return
         }
         if source.isSecureInput {
+            // Modifier changes still arrive while Secure Input is on; only the trigger key warns.
+            let state = type == .flagsChanged ? trigger(of: event) : nil
+            let triggerPressed = state.map { $0.isEvent && $0.isDown } ?? false
             setGestureStage(.secureInputBlocked)
             holdTimer?.invalidate()
             dispatch(gesture.reset())
+            if triggerPressed { onSecureInputBlocked?() }
             return
         }
         if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
@@ -112,25 +118,8 @@ final class ControlHotkeyMonitor {
             dispatch(gesture.interrupt())
             return
         }
-        let code = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
-        let isTriggerEvent: Bool
-        let down: Bool
-        let allowed: CGEventFlags
-        switch triggerKey {
-        case .control:
-            isTriggerEvent = code == 59 || code == 62
-            down = flags.contains(.maskControl)
-            allowed = .maskControl
-        case .rightOption:
-            isTriggerEvent = code == 61
-            down = flags.rawValue & UInt64(NX_DEVICERALTKEYMASK) != 0
-            allowed = .maskAlternate
-        case .function:
-            isTriggerEvent = code == 63
-            down = flags.contains(.maskSecondaryFn)
-            allowed = .maskSecondaryFn
-        }
+        let (isTriggerEvent, down, allowed) = trigger(of: event)
         let modifiers: CGEventFlags = [.maskControl, .maskCommand, .maskAlternate, .maskShift, .maskSecondaryFn]
         let alone = flags.rawValue & modifiers.rawValue & ~allowed.rawValue == 0
         let now = now()
@@ -152,7 +141,10 @@ final class ControlHotkeyMonitor {
         holdTimer?.invalidate()
         holdTimer = nil
         guard source.isRunning || source.isLocalRunning, !source.isSecureInput else {
-            if source.isSecureInput { setGestureStage(.secureInputBlocked) }
+            if source.isSecureInput {
+                setGestureStage(.secureInputBlocked)
+                onSecureInputBlocked?()
+            }
             dispatch(gesture.reset())
             return
         }
@@ -160,6 +152,19 @@ final class ControlHotkeyMonitor {
         dispatch(gesture.tick(at: time))
         // Timer wall-clock scheduling and the monotonic gesture clock can differ slightly.
         if let delay = gesture.remainingHoldDelay(at: time) { scheduleHoldTimer(delay: max(0.001, delay)) }
+    }
+
+    private func trigger(of event: CGEvent) -> (isEvent: Bool, isDown: Bool, allowed: CGEventFlags) {
+        let code = event.getIntegerValueField(.keyboardEventKeycode)
+        let flags = event.flags
+        switch triggerKey {
+        case .control:
+            return (code == 59 || code == 62, flags.contains(.maskControl), .maskControl)
+        case .rightOption:
+            return (code == 61, flags.rawValue & UInt64(NX_DEVICERALTKEYMASK) != 0, .maskAlternate)
+        case .function:
+            return (code == 63, flags.contains(.maskSecondaryFn), .maskSecondaryFn)
+        }
     }
 
     private func scheduleHoldTimer(delay: TimeInterval) {
