@@ -330,8 +330,32 @@ struct MainView: View {
                     }.frame(width: 180)
                 }
                 settingRow(mText("Mikrofon", "Microphone"), symbol: "mic") {
-                    Button { Task { await coordinator.requestMicrophonePermission() } } label: {
-                        Label(mText("Tillåt", "Allow"), systemImage: "mic").padding(12)
+                    HStack(spacing: 12) {
+                        Menu {
+                            Button { coordinator.setPinnedInputDevice(nil) } label: {
+                                checkedLabel(mText("Systemets standard", "System Default"), isChecked: coordinator.settings.pinnedInputDevice == nil)
+                            }
+                            Divider()
+                            ForEach(coordinator.inputDevices) { device in
+                                Button { coordinator.setPinnedInputDevice(device) } label: {
+                                    checkedLabel(device.name, isChecked: coordinator.isPinnedInputDevice(device))
+                                }
+                            }
+                            if let pinned = coordinator.settings.pinnedInputDevice, !coordinator.isPinnedInputDeviceConnected {
+                                checkedLabel(pinned.name + " " + mText("(ej ansluten)", "(not connected)"), isChecked: true)
+                                    .disabled(true)
+                            }
+                        } label: {
+                            Text(inputDeviceTitle).font(.system(size: 11, weight: .medium, design: .monospaced)).lineLimit(1)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                        .help(mText("Välj en mikrofon så att Mumla inte byter när du ansluter AirPods.", "Pin a microphone so Mumla doesn't switch when AirPods connect."))
+                        .accessibilityLabel(mText("Inspelningsenhet", "Input device"))
+                        .accessibilityIdentifier("settings.input-device")
+                        Button { Task { await coordinator.requestMicrophonePermission() } } label: {
+                            Label(mText("Tillåt", "Allow"), systemImage: "mic").padding(12)
+                        }
                     }
                 }
                 settingRow(mText("Tangentbordsåtkomst", "Keyboard access"), symbol: "keyboard") {
@@ -415,6 +439,15 @@ struct MainView: View {
             }.buttonStyle(MumlaKeyStyle()).disabled(coordinator.isInstallingModel)
                 .help(mText("Hämta språkmodell", "Download language model"))
         }.padding(.vertical, 18)
+    }
+
+    private var inputDeviceTitle: String {
+        guard let pinned = coordinator.settings.pinnedInputDevice else { return mText("Systemets standard", "System Default") }
+        return coordinator.isPinnedInputDeviceConnected ? pinned.name : pinned.name + " " + mText("(ej ansluten)", "(not connected)")
+    }
+
+    @ViewBuilder private func checkedLabel(_ title: String, isChecked: Bool) -> some View {
+        if isChecked { Label(title, systemImage: "checkmark") } else { Text(title) }
     }
 
     private func settingRow<Content: View>(_ title: String, symbol: String, @ViewBuilder accessory: () -> Content) -> some View {

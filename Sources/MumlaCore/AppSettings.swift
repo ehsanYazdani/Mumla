@@ -8,6 +8,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var onboardingCompleted: Bool
     public var triggerKey: DictationTriggerKey
     public var showPasteDialog: Bool
+    /// When set, dictation records from this input device instead of following the system default.
+    public var pinnedInputDevice: PinnedInputDevice?
 
     public init(
         languageMode: LanguageMode = .automatic,
@@ -16,7 +18,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         launchAtLogin: Bool = false,
         onboardingCompleted: Bool = false,
         triggerKey: DictationTriggerKey = .control,
-        showPasteDialog: Bool = true
+        showPasteDialog: Bool = true,
+        pinnedInputDevice: PinnedInputDevice? = nil
     ) {
         self.languageMode = languageMode
         self.lastLanguage = lastLanguage
@@ -25,6 +28,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.onboardingCompleted = onboardingCompleted
         self.triggerKey = triggerKey
         self.showPasteDialog = showPasteDialog
+        self.pinnedInputDevice = pinnedInputDevice
     }
 
     public static let `default` = AppSettings()
@@ -37,6 +41,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case onboardingCompleted
         case triggerKey
         case showPasteDialog
+        case pinnedInputDevice
     }
 
     public init(from decoder: Decoder) throws {
@@ -48,6 +53,19 @@ public struct AppSettings: Codable, Equatable, Sendable {
         onboardingCompleted = try container.decodeIfPresent(Bool.self, forKey: .onboardingCompleted) ?? false
         triggerKey = try container.decodeIfPresent(DictationTriggerKey.self, forKey: .triggerKey) ?? .control
         showPasteDialog = try container.decodeIfPresent(Bool.self, forKey: .showPasteDialog) ?? true
+        pinnedInputDevice = try container.decodeIfPresent(PinnedInputDevice.self, forKey: .pinnedInputDevice)
+    }
+}
+
+public struct PinnedInputDevice: Codable, Equatable, Sendable {
+    /// Core Audio device UID, stable across reconnects and restarts.
+    public var uid: String
+    /// Last known display name, shown while the device is disconnected.
+    public var name: String
+
+    public init(uid: String, name: String) {
+        self.uid = uid
+        self.name = name
     }
 }
 
